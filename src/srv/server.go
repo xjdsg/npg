@@ -18,9 +18,14 @@ func StartPartita(port string, backends []string) {
 	//start http server
 }
 
-//POST to /query?op=select/insert/update&mode=random/parallel
+//POST sql string to /query?mode=xx&op=xx&flag=xx ...
+//op: select/update/insert, it is optional
+//mode: random, parallel, it is required
+//flag: slave, it is optional
 func DMLHandler(w http.ResponseWriter, r *http.Request) error {
-	//read the sql string
+	//parse URL to get mode etc.
+
+	//read the sql string from req body
 
 	//do remote executions, and merge the results
 
