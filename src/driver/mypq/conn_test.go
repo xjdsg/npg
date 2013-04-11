@@ -1,4 +1,4 @@
-package pq
+package mypq
 
 import (
 	"database/sql"
@@ -26,7 +26,7 @@ func openTestConn(t Fatalistic) *sql.DB {
 		os.Setenv("PGSSLMODE", "disable")
 	}
 
-	conn, err := sql.Open("postgres", "")
+	conn, err := sql.Open("postgres", "user=pqtest dbname=pqtest")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,4 +1,4 @@
-package pq
+package mypq
 
 type oid uint32
 

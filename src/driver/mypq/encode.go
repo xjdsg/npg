@@ -1,4 +1,4 @@
-package pq
+package mypq
 
 import (
 	"database/sql/driver"
