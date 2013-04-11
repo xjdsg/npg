@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"srv"
 )
 
@@ -8,7 +9,9 @@ var Version = "0.0.1"
 
 //the server main program
 func main() {
-	//parameters: self port; IP:port for backend pg instances, seperated by ,
+	//the only parameter is the config file path
+	configFile := flag.String("cfg", "", "config file path")
+	flag.Parse()
 
-	//call srv.StartPartita()
+	srv.StartPartita(*configFile)
 }

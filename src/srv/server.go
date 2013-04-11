@@ -6,12 +6,20 @@ import (
 
 type PartitaServer struct {
 	pools []*Pool //for each backend pg
+	port string	//self port
+	backend	string	//backend postgres addr
+	dbname	string
+	username string
+	passwd	string
 }
 
 var partita *PartitaServer
 
-func StartPartita(port string, backends []string) {
+func StartPartita(configFile string) {
 	partita = new(PartitaServer)
+
+	//parse the config file to set port, backend, dbname, ...
+	cfg := LoadConfigFile(configFile)
 
 	//make a connection pool for each backend pg
 
