@@ -9,18 +9,17 @@ import (
 
 //connection pooling of the backend postgres instances
 
-//note: to refine or even useless at all; but basic idea as below
 
 var MaxFreeConns = 32 //todo - configurable
 
 type Pool struct {
 	Addr  string
-	conns chan net.Conn
+	conns chan *sql.DB
 }
 
 func NewPool(addr string) *Pool {
 	host := &Pool{Addr: addr}
-	host.conns = make(chan net.Conn, MaxFreeConns)
+	host.conns = make(chan *sql.DB, MaxFreeConns)
 
 	return host
 }
@@ -35,8 +34,7 @@ func (h *Pool) Clear() error {
 	return nil
 }
 
-func (h *Pool) CreateConn() (c net.Conn, e error) {
-    
+func (h *Pool) CreateConn() (c *sql.DB, e error) {
     //error sql.DB can not convert to net.Conn
 	c, e = sql.Open("postgres", "user=pqtest dbname=pqtest")
 
@@ -47,7 +45,7 @@ func (h *Pool) CreateConn() (c net.Conn, e error) {
 	return c, e
 }
 
-func (h *Pool) GetConn() (c net.Conn, e error) {
+func (h *Pool) GetConn() (c *sql.DB, e error) {
 	select {
 	case c = <-h.conns:
 		return c, nil
@@ -58,7 +56,7 @@ func (h *Pool) GetConn() (c net.Conn, e error) {
 }
 
 //if chan is full , close conn else put conn to chan
-func (h *Pool) ReleaseConn(conn net.Conn) {
+func (h *Pool) ReleaseConn(conn *sql.DB) {
 	/*    select {
 	case h.conns <- conn:
 	default:
