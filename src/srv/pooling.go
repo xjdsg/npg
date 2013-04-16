@@ -2,13 +2,10 @@ package srv
 
 import (
 	_ "driver/mypq"
-	"net"
-    "database/sql"
-    "database/sql/driver"
+	"database/sql"
 )
 
 //connection pooling of the backend postgres instances
-
 
 var MaxFreeConns = 32 //todo - configurable
 
@@ -35,8 +32,7 @@ func (h *Pool) Clear() error {
 }
 
 func (h *Pool) CreateConn() (c *sql.DB, e error) {
-    //error sql.DB can not convert to net.Conn
-	c, e = sql.Open("postgres", "user=pqtest dbname=pqtest")
+	c, e = sql.Open("postgres", "user=pqtest dbname=pqtest sslmode=disable")
 
 	if e != nil {
 		println("open postgres failed")
@@ -53,6 +49,7 @@ func (h *Pool) GetConn() (c *sql.DB, e error) {
 		c, e = h.CreateConn()
 		return c, e
 	}
+    return c, e
 }
 
 //if chan is full , close conn else put conn to chan
@@ -70,4 +67,3 @@ func (h *Pool) ReleaseConn(conn *sql.DB) {
 	}
 
 }
-

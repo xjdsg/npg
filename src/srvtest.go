@@ -2,9 +2,11 @@ package main
 
 import (
 	"srv"
+    "log"
 )
 
 func main() {
 	backends := []string{"localhost"}
-	StartPartitaServer("1234", backends)
+    log.Println("start partita serving 8888")
+	srv.StartPartita("8888", backends)
 }
