@@ -1,0 +1,53 @@
+About go-pgsql
+==============
+
+go-pgsql is a [PostgreSQL](http://www.postgresql.org) client library for the
+[Go](http://golang.org) programming language.
+
+It partially implements version 3.0 of the
+[PostgreSQL](http://www.postgresql.org) frontend/backend protocol, so it
+should work with servers of version 7.4 and later.
+
+It now supports database/sql in addition to its existing interface.
+
+Installing go-pgsql
+===================
+
+First make sure you have a working [Go](http://golang.org) installation, see
+the installation guide at http://golang.org/doc/install.html
+
+Now you should be able to install go-pgsql by running
+`go get github.com/lxn/go-pgsql`
+
+Using go-pgsql
+==============
+
+There are some examples in the
+[examples](go-pgsql/tree/master/examples) directory which
+should get you started.
+
+Please open an issue on the bug tracker if you encounter a bug.
+
+Missing Features
+================
+
+go-pgsql is currently missing support for some features, including:
+
+- authentication types other than MD5
+- SSL encrypted sessions
+- some data types like bytea, ...
+- canceling commands/queries
+- bulk copy
+- ...
+
+Connection Info
+================
+
+To connect, you must pass a connection string to pgsql.Connect().
+Much as with the libpq conninfo parameter, values are optional, and
+may be overridden by environment variables at runtime, specifically:
+
+- PGPORT - port number
+- PGUSER - user name (defaults to postgres)
+- PGHOST - host name/address (defaults to localhost)
+- PGDATABASE - name of database (defaults to user name if not specified)

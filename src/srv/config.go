@@ -2,8 +2,9 @@ package srv
 
 import (
     "os"
-    "bufio"
-    "fmt"
+    //"bufio"
+    //"fmt"
+    "log"
 )
 
 //the config file used by partita is like - 
@@ -34,5 +35,5 @@ func LoadConfigFile(file string) *Config {
 }
 
 func (cfg *Config) GetString(key string) string {
-	return 
+	return "hello"
 }
