@@ -4,8 +4,8 @@
 
 package core
 
-import(
-    "strconv"
+import (
+	"strconv"
 )
 
 const (
@@ -163,8 +163,8 @@ func (t Type) String() string {
 
 func convert(ptype int, val string) interface{} {
 	switch ptype {
-    case _INT2, _INT4, _INT8:
-        return tonumber(val)
+	case _INT2, _INT4, _INT8:
+		return tonumber(val)
 	case _FLOAT4, _FLOAT8:
 		fval, err := strconv.ParseFloat(val, 64)
 		if err != nil { // Not expected

@@ -70,7 +70,7 @@ func (conn *Conn) readString() string {
 }
 
 func (conn *Conn) readAuth() {
-    conn.readByte() //read cmd
+	conn.readByte() //read cmd
 	//log.Println("Auth: ", string(conn.readByte())) //to eat command
 	// Just eat message length.
 	conn.readInt32()
@@ -217,8 +217,8 @@ func (conn *Conn) getResult() (rs *Result) {
 			return
 		default:
 			n := conn.readInt32()
-            //eat the msg
-            conn.readNbyte(n-4)
+			//eat the msg
+			conn.readNbyte(n - 4)
 			//fmt.Println("msg:", n, string(conn.readNbyte(n-4))) //4 is the len of n
 		}
 	}
@@ -234,26 +234,27 @@ func (conn *Conn) getPreparedStmt(st *Stmt) {
 		case 't': //_ParameterDescription
 			conn.readInt32()
 			nparams := conn.readInt16()
-            //fmt.Println("nparams: ", nparams)
-            st.params = make([]*stParams, nparams)
+			//fmt.Println("nparams: ", nparams)
+			st.params = make([]*stParams, nparams)
 			for i := 0; i < int(nparams); i++ {
-                st.params[i] =&stParams{ptype: conn.readInt32()}  //fix
+				st.params[i] = &stParams{ptype: conn.readInt32()} //fix
 			}
-            return //fix
-/*        case 'T':
-            n := conn.readInt32()
-			fmt.Println("msg:", n, string(conn.readNbyte(n-4))) //4 is the len of n
-            return
-*/
+			return //fix
+			/*        case 'T':
+			            n := conn.readInt32()
+						fmt.Println("msg:", n, string(conn.readNbyte(n-4))) //4 is the len of n
+			            return
+			*/
 		default:
-            n := conn.readInt32()
-            //eat the msg
-            conn.readNbyte(n-4)
+			n := conn.readInt32()
+			//eat the msg
+			conn.readNbyte(n - 4)
 			//fmt.Println("msg:", n, string(conn.readNbyte(n-4))) //4 is the len of n
 		}
 	}
 	return
 }
+
 /*
 //parse the command info from backend
 func (conn *Conn) readBMsg() interface{} {
@@ -268,7 +269,7 @@ func (conn *Conn) readBMsg() interface{} {
 		case _BackendKeyData: //K
 			conn.readInt32()
 			conn.readInt32() //backendPid
-			conn.readInt32() //backendSecretKey 
+			conn.readInt32() //backendSecretKey
 
 		case _BindComplete:
 			conn.readInt32()
@@ -311,7 +312,7 @@ func (conn *Conn) readBMsg() interface{} {
 
 		case _ReadyForQuery: //Z
 			conn.readInt32()
-			conn.readByte() //TxStatus 
+			conn.readByte() //TxStatus
 
 		case _RowDescription: //T
 			return conn.getFields()

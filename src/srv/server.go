@@ -2,10 +2,10 @@ package srv
 
 import (
 	"driver/pgsql"
+	"fmt"
 	"log"
 	"net/http"
-	"fmt"
-    "time"
+	"time"
 )
 
 type PartitaServer struct {
@@ -25,7 +25,7 @@ func StartPartita(port string, backends []string) {
 		log.Fatal("no backends")
 	}
 
-	partita = &PartitaServer{pools: make([]*pgsql.Pool,n)}
+	partita = &PartitaServer{pools: make([]*pgsql.Pool, n)}
 	var err error
 	//make a connection pool for each backend pg
 	//for i := 0; i < n; i++ {
@@ -39,8 +39,8 @@ func StartPartita(port string, backends []string) {
 
 	partita.pools[1], err = pgsql.NewPool("dbname=pqtest2 user=pqtest2 port=5433", 3, 5, pgsql.DEFAULT_IDLE_TIMEOUT)
 	if err != nil {
-	       log.Fatalf("Error opening connection pool: %s\n", err)
-	 }
+		log.Fatalf("Error opening connection pool: %s\n", err)
+	}
 	//partita.pools[1].Debug = true
 
 	//parse the config file to set port, backend, dbname, ...
@@ -71,7 +71,7 @@ func DMLHandler(w http.ResponseWriter, r *http.Request) {
 	//mode :=r.FormValue("mode")
 
 	//for simple, just use one backend
-    pool := partita.pools[0]  //the global partita is invalid in handler!!!
+	pool := partita.pools[0] //the global partita is invalid in handler!!!
 	cn, err := pool.Acquire()
 	if err != nil {
 		log.Fatal("GetConn: ", err)
@@ -80,7 +80,7 @@ func DMLHandler(w http.ResponseWriter, r *http.Request) {
 	switch opt {
 	case "select":
 		rs, err := cn.Query(sql)
-        if err != nil {
+		if err != nil {
 			log.Fatal("Query failed : ", err)
 		} else {
 			log.Println("Query: %s success", sql)
@@ -92,11 +92,11 @@ func DMLHandler(w http.ResponseWriter, r *http.Request) {
 					log.Println("has no Row")
 					break
 				}
-                r0,_,_ :=rs.Any(0)
-                r1,_,_ :=rs.Any(1)
-				log.Println(r0,r1)
-                t := fmt.Sprintf("%d %s\n",r0,r1)
-                w.Write([]byte(t))
+				r0, _, _ := rs.Any(0)
+				r1, _, _ := rs.Any(1)
+				log.Println(r0, r1)
+				t := fmt.Sprintf("%d %s\n", r0, r1)
+				w.Write([]byte(t))
 			}
 		}
 	case "insert", "update", "delete":
@@ -124,4 +124,3 @@ func handleParallelUpdate(sql string, w http.ResponseWriter) error {
 func handleParallelSelect(sql string, w http.ResponseWriter) error {
 	return nil
 }
-

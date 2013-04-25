@@ -9,8 +9,8 @@ import (
 	"os"
 	"os/user"
 	"strings"
-//    "database/sql/driver"
-    "log"
+	//    "database/sql/driver"
+	"log"
 )
 
 type connParams struct {
@@ -99,9 +99,9 @@ func Connect(s string) (conn *Conn, err error) {
 }
 
 func (conn *Conn) Close() (err error) {
-    conn.writeTerminate()
-    panicIfErr(conn.cn.Close())
-    return
+	conn.writeTerminate()
+	panicIfErr(conn.cn.Close())
+	return
 }
 
 func (conn *Conn) Query(sql string, args ...interface{}) (rs *Result, err error) {
@@ -109,11 +109,11 @@ func (conn *Conn) Query(sql string, args ...interface{}) (rs *Result, err error)
 		conn.writeQuery(sql)
 		rs = conn.getResult()
 	} else {
-        st, _ := conn.Prepare(sql)
-        rs, err  = st.Exec(args)
+		st, _ := conn.Prepare(sql)
+		rs, err = st.Exec(args)
 
 	}
-	return 
+	return
 }
 
 func (conn *Conn) Prepare(sql string) (st *Stmt, err error) {
@@ -130,7 +130,7 @@ func (conn *Conn) Prepare(sql string) (st *Stmt, err error) {
 func (conn *Conn) Execute(sql string, args ...interface{}) (rs *Result, err error) {
     st, err := conn.Prepare(sql)
     rs, err  = st.Exec(args)
-    return 
+    return
 }
 
 */
@@ -141,7 +141,7 @@ type stParams struct {
 }
 
 type Stmt struct {
-	cn   *Conn
+	cn     *Conn
 	query  string
 	name   string
 	params []*stParams
@@ -149,21 +149,21 @@ type Stmt struct {
 
 func (st *Stmt) Exec(args ...interface{}) (rs *Result, err error) {
 	if len(args) == 0 {
-        log.Println("simple query")
-        return st.cn.Query(st.query) //fix
-    }
-    if len(args) != len(st.params){
-        fmt.Println("args and params different")
-        return nil, nil
-    }
-    for i := 0; i< len(args); i++ {
-        st.params[i].value = args[i]
-    }
-    st.cn.writeBind(st)
-    st.cn.writeExecute(st)
-    st.cn.writeSync()
-    rs = st.cn.getResult()
-    return
+		log.Println("simple query")
+		return st.cn.Query(st.query) //fix
+	}
+	if len(args) != len(st.params) {
+		fmt.Println("args and params different")
+		return nil, nil
+	}
+	for i := 0; i < len(args); i++ {
+		st.params[i].value = args[i]
+	}
+	st.cn.writeBind(st)
+	st.cn.writeExecute(st)
+	st.cn.writeSync()
+	rs = st.cn.getResult()
+	return
 }
 
 /*

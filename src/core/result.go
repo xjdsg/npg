@@ -1,8 +1,8 @@
 package core
 
 import (
-    "errors"
-    "database/sql/driver"
+	"database/sql/driver"
+	"errors"
 )
 
 type Value struct {
@@ -41,7 +41,6 @@ func (result *Result) RowsRetrieved() int64 {
 	return int64(len(result.qr.Rows))
 }
 
-
 func (result *Result) Rows() [][]Value {
 	return result.qr.Rows
 }
@@ -73,10 +72,9 @@ func (result *Result) Close() error {
 	return nil
 }
 
-
 func (result *Result) Next(dest []driver.Value) error {
 	if len(dest) != len(result.qr.Fields) {
-        return errors.New("result: field length mismatch")
+		return errors.New("result: field length mismatch")
 	}
 	if result.index >= len(result.qr.Rows) {
 		return errors.New("result: index beyond rows")

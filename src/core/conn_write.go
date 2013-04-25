@@ -88,7 +88,6 @@ func (conn *Conn) writeFlush() {
 	conn.flush()
 }
 
-
 func (conn *Conn) writeBind(stmt *Stmt) {
 	values := make([]string, len(stmt.params))
 
@@ -184,7 +183,7 @@ func (conn *Conn) writeBind(stmt *Stmt) {
 		len(stmt.name) + 1 +
 		2 +
 		2 + len(stmt.params)*4 + paramValuesLen +
-		2 )
+		2)
 
 	conn.writeFrontendMessageCode(_Bind)
 	conn.writeInt32(msgLen)
@@ -199,7 +198,7 @@ func (conn *Conn) writeBind(stmt *Stmt) {
 		} else {
 			conn.writeInt32(int32(len(values[i])))
 			conn.writeString(values[i])
-            fmt.Println("bind value :",values[i])
+			fmt.Println("bind value :", values[i])
 		}
 	}
 
