@@ -814,13 +814,13 @@ func (rs *ResultSet) Any(ord int) (value interface{}, isNull bool, err error) {
 	return
 }
 
-func (rs * ResultSet) AnyString(ord int) (value interface{}, err error){
+func (rs *ResultSet) AnyString(ord int) (value interface{}, err error) {
 	if rs.values[ord] == nil {
-	return
-    }
-    value = rs.values[ord]
+		return
+	}
+	value = rs.values[ord]
 
-    return
+	return
 }
 
 func (rs *ResultSet) scan(args ...interface{}) {

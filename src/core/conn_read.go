@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	//"log"
+	"bytes"
 	"strconv"
 	"strings"
 )
@@ -37,21 +38,18 @@ func (conn *Conn) readNbyte(n int32) []byte {
 func (conn *Conn) readByte() byte {
 	b, err := conn.reader.ReadByte()
 	panicIfErr(err)
-
 	return b
 }
 
 func (conn *Conn) readBytes(delim byte) []byte {
 	b, err := conn.reader.ReadBytes(delim)
 	panicIfErr(err)
-
 	return b
 }
 
 func (conn *Conn) readInt16() int16 {
 	var buf [2]byte
 	b := buf[:]
-
 	conn.read(b)
 	return int16(binary.BigEndian.Uint16(b))
 }
@@ -59,7 +57,6 @@ func (conn *Conn) readInt16() int16 {
 func (conn *Conn) readInt32() int32 {
 	var buf [4]byte
 	b := buf[:]
-
 	conn.read(b)
 	return int32(binary.BigEndian.Uint32(b))
 }
@@ -69,9 +66,8 @@ func (conn *Conn) readString() string {
 	return string(b[:len(b)-1])
 }
 
-func (conn *Conn) readAuth() {
-    conn.readByte() //read cmd
-	//log.Println("Auth: ", string(conn.readByte())) //to eat command
+func (conn *Conn) readAuth() error { //FIXME
+	conn.readByte() //read cmd
 	// Just eat message length.
 	conn.readInt32()
 
@@ -120,16 +116,13 @@ func (conn *Conn) readAuth() {
 		//		case _AuthenticationGSSContinue:
 
 		//		case _AuthenticationSSPI:
-
 	default:
-		panic(fmt.Sprintf("unsupported authentication type: %d", authType))
+		return fmt.Errorf("unsupported authentication type: %d", authType)
 	}
+	return nil
 }
 
 func (conn *Conn) getResultComplete() (rowsAffected int64) {
-	// Just eat message length.
-	conn.readInt32()
-
 	// Retrieve the number of affected rows from the command tag.
 	tag := conn.readString()
 	parts := strings.Split(tag, " ")
@@ -138,26 +131,17 @@ func (conn *Conn) getResultComplete() (rowsAffected int64) {
 }
 
 func (conn *Conn) getFields() (fields []Field) {
-
-	// Just eat message length.
-	conn.readInt32()
-
 	fieldCount := conn.readInt16()
-
 	fields = make([]Field, fieldCount)
 	for i := 0; i < int(fieldCount); i++ {
 		fields[i].Name = conn.readString()
 		// Just eat table OID.
 		conn.readInt32()
-
 		// Just eat field OID.
 		conn.readInt16()
-
 		fields[i].Type = conn.readInt32()
-
 		// Just eat field size.
 		conn.readInt16()
-
 		// Just eat field type modifier.
 		conn.readInt32()
 		// Just eat field format: textFormat,binaryFormat
@@ -167,11 +151,7 @@ func (conn *Conn) getFields() (fields []Field) {
 }
 
 func (conn *Conn) getRow() (row []Value) {
-	// Just eat message length.
-	conn.readInt32()
-
 	fieldCount := conn.readInt16()
-
 	row = make([]Value, fieldCount)
 
 	for i := 0; i < int(fieldCount); i++ {
@@ -191,13 +171,14 @@ func (conn *Conn) getRow() (row []Value) {
 	return
 }
 
-func (conn *Conn) getResult() (rs *Result) {
+func (conn *Conn) getResult() (rs *Result, err error) {
 	rs = &Result{qr: &QueryResult{}}
 	rlist := list.New()
 
 	for {
 		cmd := conn.readByte()
 		//fmt.Println("cmd: ", string(cmd))
+		n := conn.readInt32() // read msg length
 		switch cmd {
 		case 'T':
 			rs.qr.Fields = conn.getFields()
@@ -211,49 +192,62 @@ func (conn *Conn) getResult() (rs *Result) {
 			for i := 0; i < rlen; i++ {
 				rows[i] = rlist.Remove(rlist.Front()).([]Value)
 			}
-			fmt.Println("rows : ", rows)
+			//fmt.Println("rows : ", rows)
 			rs.qr.Rows = rows
-
 			return
+		case 'E':
+			return nil, fmt.Errorf(parseE(conn.readNbyte(n - 4)))
 		default:
-			n := conn.readInt32()
-            //eat the msg
-            conn.readNbyte(n-4)
+			conn.readNbyte(n - 4) //eat the msg
 			//fmt.Println("msg:", n, string(conn.readNbyte(n-4))) //4 is the len of n
 		}
 	}
-
 	return
 }
 
-func (conn *Conn) getPreparedStmt(st *Stmt) {
+func (conn *Conn) getPreparedStmt(st *Stmt) error {
 	for {
 		cmd := conn.readByte()
 		//fmt.Println("cmd: ", string(cmd))
+		n := conn.readInt32() // read msg length
 		switch cmd {
 		case 't': //_ParameterDescription
-			conn.readInt32()
 			nparams := conn.readInt16()
-            //fmt.Println("nparams: ", nparams)
-            st.params = make([]*stParams, nparams)
+			//fmt.Println("nparams: ", nparams)
+			st.params = make([]*stParams, nparams)
 			for i := 0; i < int(nparams); i++ {
-                st.params[i] =&stParams{ptype: conn.readInt32()}  //fix
+				st.params[i] = &stParams{ptype: conn.readInt32()} //fix
 			}
-            return //fix
-/*        case 'T':
-            n := conn.readInt32()
-			fmt.Println("msg:", n, string(conn.readNbyte(n-4))) //4 is the len of n
-            return
-*/
+			return nil
+			//FIXME
+			/*        case 'T':
+			            n := conn.readInt32()
+						fmt.Println("msg:", n, string(conn.readNbyte(n-4))) //4 is the len of n
+			            return
+			*/
+		case 'E':
+			return fmt.Errorf(parseE(conn.readNbyte(n - 4)))
 		default:
-            n := conn.readInt32()
-            //eat the msg
-            conn.readNbyte(n-4)
+			conn.readNbyte(n - 4) //eat the msg
 			//fmt.Println("msg:", n, string(conn.readNbyte(n-4))) //4 is the len of n
 		}
 	}
-	return
+	return nil
 }
+
+//FIXME
+func parseE(b []byte) string {
+	slices := bytes.Split(b, []byte{0})
+	/*s := make([]string, len(slices))
+	    for i, slice := range slices {
+	        s[i] = string(slice)
+	    }
+		return strings.Join(s, ", ")
+	*/
+
+	return string(slices[2][1:])
+}
+
 /*
 //parse the command info from backend
 func (conn *Conn) readBMsg() interface{} {

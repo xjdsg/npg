@@ -125,9 +125,9 @@ func NewPool(connectParams string, minConns, maxConns int, idleTimeout time.Dura
 		if err != nil {
 			return nil, err
 		}
-        p.conns.PushFront(poolConn{_c, time.Now()})
+		p.conns.PushFront(poolConn{_c, time.Now()})
 		p.n++
-         if p.Debug {
+		if p.Debug {
 			p.log(fmt.Sprintf("connection %d created", p.n))
 		}
 
@@ -176,7 +176,7 @@ func (p *Pool) Release(c *Conn) {
 	p.cond.L.Lock()
 	defer p.cond.L.Unlock()
 	if !p.closed {
-		// reset the connection
+		// reset the connection...why??
 		c.reader = bufio.NewReader(c.tcpConn)
 		c.writer = bufio.NewWriter(c.tcpConn)
 		c.state = readyState{}

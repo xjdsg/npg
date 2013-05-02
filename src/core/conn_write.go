@@ -88,7 +88,6 @@ func (conn *Conn) writeFlush() {
 	conn.flush()
 }
 
-
 func (conn *Conn) writeBind(stmt *Stmt) {
 	values := make([]string, len(stmt.params))
 
@@ -126,14 +125,14 @@ func (conn *Conn) writeBind(stmt *Stmt) {
 			values[i] = strconv.Itoa(int(val))
 
 		case int64:
-			switch Type(param.ptype) {
-			case Date:
+			switch param.ptype {
+			case _DATE:
 				values[i] = time.Unix(val, 0).UTC().Format("2006-01-02")
 
-			case Time, TimeTZ:
+			case _TIME, _TIMETZ:
 				values[i] = time.Unix(val, 0).UTC().Format("15:04:05")
 
-			case Timestamp, TimestampTZ:
+			case _TIMESTAMP, _TIMESTAMPTZ:
 				values[i] = time.Unix(val, 0).UTC().Format("2006-01-02 15:04:05")
 
 			default:
@@ -158,14 +157,14 @@ func (conn *Conn) writeBind(stmt *Stmt) {
 			values[i] = val
 
 		case time.Time:
-			switch Type(param.ptype) {
-			case Date:
+			switch param.ptype {
+			case _DATE:
 				values[i] = val.Format("2006-01-02")
 
-			case Time, TimeTZ:
+			case _TIME, _TIMETZ:
 				values[i] = val.Format("15:04:05")
 
-			case Timestamp, TimestampTZ:
+			case _TIMESTAMP, _TIMESTAMPTZ:
 				values[i] = val.Format("2006-01-02 15:04:05")
 
 			default:
@@ -184,7 +183,7 @@ func (conn *Conn) writeBind(stmt *Stmt) {
 		len(stmt.name) + 1 +
 		2 +
 		2 + len(stmt.params)*4 + paramValuesLen +
-		2 )
+		2)
 
 	conn.writeFrontendMessageCode(_Bind)
 	conn.writeInt32(msgLen)
@@ -199,7 +198,7 @@ func (conn *Conn) writeBind(stmt *Stmt) {
 		} else {
 			conn.writeInt32(int32(len(values[i])))
 			conn.writeString(values[i])
-            fmt.Println("bind value :",values[i])
+			fmt.Println("bind value :", values[i])
 		}
 	}
 

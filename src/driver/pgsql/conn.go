@@ -326,7 +326,7 @@ func Connect(connStr string, logLevel LogLevel) (conn *Conn, err error) {
 	newConn.readBackendMessages(nil)
 
 	newConn.state = readyState{}
-	newConn.params = nil     //???
+	newConn.params = nil //???
 
 	newConn.transactionStatus = NotInTransaction
 

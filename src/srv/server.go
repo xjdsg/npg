@@ -1,127 +1,225 @@
 package srv
 
 import (
-	"driver/pgsql"
-	"log"
-	"net/http"
+	"core"
 	"fmt"
-    "time"
+	"log"
+	"math/rand"
+	"net/http"
+	"time"
 )
 
+var MaxBackends = 32
+
 type PartitaServer struct {
-	pools    []*pgsql.Pool //for each backend pg
-	port     string        //self port
-	backend  string        //backend postgres addr
-	dbname   string
-	username string
-	passwd   string
+	pools    []*core.Pool // for each backend pg 
+	backends []string     //backend   hostname:port:dbname:username:password
+	port     string
 }
 
 var partita *PartitaServer
 
-func StartPartita(port string, backends []string) {
-	n := 2 //len(backends)
-	if n <= 0 {
-		log.Fatal("no backends")
-	}
-
-	partita = &PartitaServer{pools: make([]*pgsql.Pool,n)}
-	var err error
-	//make a connection pool for each backend pg
-	//for i := 0; i < n; i++ {
-	partita.pools[0], err = pgsql.NewPool("dbname=pqtest user=pqtest port=5432", 3, 5, pgsql.DEFAULT_IDLE_TIMEOUT)
-	if err != nil {
-		log.Fatal("Error opening connection pool: %s\n", err)
-	}
-
-	//partita.pools[0].Debug = true
-	//}
-
-	partita.pools[1], err = pgsql.NewPool("dbname=pqtest2 user=pqtest2 port=5433", 3, 5, pgsql.DEFAULT_IDLE_TIMEOUT)
-	if err != nil {
-	       log.Fatalf("Error opening connection pool: %s\n", err)
-	 }
-	//partita.pools[1].Debug = true
-
+func StartPartita(configFile string) {
 	//parse the config file to set port, backend, dbname, ...
-	//cfg := LoadConfigFile(configFile)
+	cfg := LoadConfigFile(configFile)
+	n := len(cfg.backends)
+	if n <= 0 {
+		log.Fatal("Error: no backends")
+	}
+
+	partita = &PartitaServer{pools: make([]*core.Pool, 0, MaxBackends),
+		backends: cfg.backends,
+		port:     cfg.port}
+
+	//make a connection pool for each backend pg
+	for _, backend := range cfg.backends {
+		log.Println("Info: Connecting backend ", backend)
+		partita.pools = append(partita.pools, core.NewPool(GetString(backend)))
+	}
 
 	//start http server
-	log.Println("wait for query ...  ", fmt.Sprintf(":%s", port))
+	log.Println("Info: Start partita serving: ", cfg.port)
+
 	http.HandleFunc("/query", DMLHandler)
-	err = http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
+
+	log.Println("Info: Waiting for query ...  ")
+
+	err := http.ListenAndServe(fmt.Sprintf(":%s", cfg.port), nil)
 	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
+		log.Fatalf("ListenAndServe: ", err)
 	}
+
+}
+
+//backend   hostname:port:dbname:username:password
+func AddBackend(backend string) error {
+	if len(partita.backends) == MaxBackends {
+		return fmt.Errorf("Info: We have reached the max backends")
+	}
+	partita.pools = append(partita.pools, core.NewPool(GetString(backend)))
+
+	return nil
 }
 
 //POST sql string to /query?mode=xx&op=xx&flag=xx ...
-//op: select/update/insert, it is optional
-//mode: random, parallel, it is required
-//flag: slave, it is optional
+//op: select/update/insert/delete, optional
+//mode: random, parallel, required
+//flag: slave, optional
 func DMLHandler(w http.ResponseWriter, r *http.Request) {
-	//parse URL to get mode etc.
-
-	//read the sql string from req body
-
-	//do remote executions, and merge the results
-
+	//parse URL to get sql,mode, etc.
 	sql := r.FormValue("sql")
-	opt := r.FormValue("opt")
-	//mode :=r.FormValue("mode")
-
-	//for simple, just use one backend
-    pool := partita.pools[0]  //the global partita is invalid in handler!!!
-	cn, err := pool.Acquire()
-	if err != nil {
-		log.Fatal("GetConn: ", err)
-	}
-
-	switch opt {
-	case "select":
-		rs, err := cn.Query(sql)
-        if err != nil {
-			log.Fatal("Query failed : ", err)
-		} else {
-			log.Println("Query: %s success", sql)
-			fieldCount := rs.FieldCount()
-			log.Println("fieldCount:", fieldCount)
-			for {
-				hasRow, _ := rs.FetchNext()
-				if !hasRow {
-					log.Println("has no Row")
-					break
-				}
-                r0,_,_ :=rs.Any(0)
-                r1,_,_ :=rs.Any(1)
-				log.Println(r0,r1)
-                t := fmt.Sprintf("%d %s\n",r0,r1)
-                w.Write([]byte(t))
-			}
-		}
-	case "insert", "update", "delete":
-		_, err := cn.Execute(sql)
+	//opt := r.FormValue("opt")
+	mode := r.FormValue("mode")
+	//flag := r.FormValue("flag")
+	var err error
+	switch mode {
+	case "parallel":
+		err = handleParallelQuery(sql, w)
 		if err != nil {
-			log.Fatal("Exec failed : ", err)
-		} else {
-			log.Println("Exec: %s success", sql)
-
+			fmt.Fprint(w, err)
+		}
+	case "random":
+		rand.Seed(time.Now().UTC().UnixNano())
+		idx := rand.Intn(len(partita.backends)-0) + 0
+		log.Println("Info: random processed at backend ", partita.backends[idx])
+		err = handleSingleQuery(sql, idx, w)
+		if err != nil {
+			fmt.Fprint(w, err)
 		}
 	default:
-		log.Fatal("opt not support : ", opt)
+		fmt.Fprint(w, "Error: mode %s not support\n", mode)
 	}
 }
 
-func handleRandomInsert(sql string, w http.ResponseWriter) error {
-	//todo
-	return nil
+func handleSingleQuery(sql string, idx int, w http.ResponseWriter) (err error) {
+	cn, err := partita.pools[idx].GetConn()
+	defer partita.pools[idx].ReleaseConn(cn)
+	if err != nil {
+		return
+	}
+	rs, err := cn.Exec(sql)
+	if err != nil {
+		return
+	}
+	err = writeResponse(rs, w)
+	return err
 }
 
-func handleParallelUpdate(sql string, w http.ResponseWriter) error {
-	return nil
+/*
+func getShardsPoolIdx(mode string) []int {
+
+}
+*/
+
+func writeResponse(rs *core.Result, w http.ResponseWriter) (err error) {
+	if rs == nil {
+		return nil
+	}
+	if rs.RowsRetrieved() == 0 {
+		rowsAffected, _ := rs.RowsAffected()
+		if rowsAffected > 0 {
+			fmt.Fprintf(w, "Rows Affected is %d\n", rowsAffected)
+		} else {
+			fmt.Fprintf(w, "0 row returned or row affected is 0\n")
+		}
+		return nil
+	}
+	for _, f := range rs.Fields() {
+		fmt.Fprintf(w, "%s ", f.Name)
+	}
+	fmt.Fprintf(w, "\n----------------\n")
+	for _, r := range rs.Rows() {
+		for _, v := range r {
+			fmt.Fprintf(w, "%s ", v.Raw())
+		}
+		fmt.Fprintf(w, "\n")
+	}
+	fmt.Fprintf(w, "-----------------\n%d rows\n", rs.RowsRetrieved())
+	return
 }
 
-func handleParallelSelect(sql string, w http.ResponseWriter) error {
+//do remote executions, and merge the results
+func handleParallelQuery(sql string, w http.ResponseWriter) error {
+	rchan := make(chan *core.Result, len(partita.backends))
+	for _, pool := range partita.pools {
+		go func(pool *core.Pool) {
+			cn, err := pool.GetConn()
+			defer pool.ReleaseConn(cn)
+			if err != nil {
+				rchan <- &core.Result{error: err}
+				return
+			}
+			rs, err := cn.Exec(sql)
+			if err != nil {
+				rchan <- &core.Result{error: err}
+				return
+			}
+			rchan <- rs
+		}(pool)
+	}
+
+	//sum all results 
+	results := make([]*core.Result, len(partita.backends))
+	rowCount := int64(0)
+	rowsAffected := int64(0)
+	var hasError error
+	for i := range results {
+		results[i] = <-rchan
+		if results[i].error != nil {
+			hasError = results[i].error
+			continue
+		}
+		affected, _ := results[i].RowsAffected()
+		rowsAffected += affected
+		rowCount += results[i].RowsRetrieved()
+	}
+
+	if hasError != nil {
+		return fmt.Errorf("Partial result set has error (%v)", hasError)
+	}
+
+	//no rows return like update/delete/insert, or select result is empty 
+	if rowCount == 0 {
+		if rowsAffected > 0 {
+			fmt.Fprintf(w, "Rows Affected is %d\n", rowsAffected)
+		} else {
+			fmt.Fprintf(w, "0 row returned or row affected is 0\n")
+		}
+		return nil
+	}
+	/*
+		var fields []core.Field
+		if len(results) > 0 {
+			fields = results[0].Fields()
+		}*/
+
+	// check the schemas all match (both names and types)
+	if len(results) > 1 {
+		firstFields := results[0].Fields()
+		for _, r := range results[1:] {
+			fields := r.Fields()
+			if len(fields) != len(firstFields) {
+				return fmt.Errorf("server: column count mismatch: %v != %v", len(firstFields), len(fields))
+			}
+			for i, field := range fields {
+				if field.Name != firstFields[i].Name {
+					return fmt.Errorf("server: column[%v] name mismatch: %v != %v", i, field.Name, firstFields[i].Name)
+				}
+			}
+		}
+	}
+
+	//combine results
+	rs := core.NewResult(rowCount, rowsAffected, int64(0), results[0].Fields())
+	idx := 0
+	rows := rs.Rows()
+	for _, tr := range results {
+		for _, row := range tr.Rows() {
+			rows[idx] = row
+			idx++
+		}
+	}
+
+	writeResponse(rs, w)
 	return nil
 }
-

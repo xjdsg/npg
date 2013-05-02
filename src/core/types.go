@@ -4,10 +4,11 @@
 
 package core
 
-import(
-    "strconv"
+import (
+	"strconv"
 )
 
+//postgres type oids
 const (
 	_BOOL             = 16
 	_BYTEA            = 17
@@ -85,86 +86,10 @@ const (
 	_ANYENUM          = 3500
 )
 
-// Type represents the PostgreSQL data type of fields and parameters.
-type Type int32
-
-const (
-	Custom      Type = 0
-	Boolean     Type = _BOOL
-	Char        Type = _CHAR
-	Date        Type = _DATE
-	Real        Type = _FLOAT4
-	Double      Type = _FLOAT8
-	Smallint    Type = _INT2
-	Integer     Type = _INT4
-	Bigint      Type = _INT8
-	Numeric     Type = _NUMERIC
-	Text        Type = _TEXT
-	Time        Type = _TIME
-	TimeTZ      Type = _TIMETZ
-	Timestamp   Type = _TIMESTAMP
-	TimestampTZ Type = _TIMESTAMPTZ
-	Varchar     Type = _VARCHAR
-)
-
-func (t Type) String() string {
-	switch t {
-	case Boolean:
-		return "Boolean"
-
-	case Char:
-		return "Char"
-
-	case Custom:
-		return "Custom"
-
-	case Date:
-		return "Date"
-
-	case Real:
-		return "Real"
-
-	case Double:
-		return "Double"
-
-	case Smallint:
-		return "Smallint"
-
-	case Integer:
-		return "Integer"
-
-	case Bigint:
-		return "Bigint"
-
-	case Numeric:
-		return "Numeric"
-
-	case Text:
-		return "Text"
-
-	case Time:
-		return "Time"
-
-	case TimeTZ:
-		return "TimeTZ"
-
-	case Timestamp:
-		return "Timestamp"
-
-	case TimestampTZ:
-		return "TimestampTZ"
-
-	case Varchar:
-		return "Varchar"
-	}
-
-	return "Unknown"
-}
-
 func convert(ptype int, val string) interface{} {
 	switch ptype {
-    case _INT2, _INT4, _INT8:
-        return tonumber(val)
+	case _INT2, _INT4, _INT8:
+		return tonumber(val)
 	case _FLOAT4, _FLOAT8:
 		fval, err := strconv.ParseFloat(val, 64)
 		if err != nil { // Not expected

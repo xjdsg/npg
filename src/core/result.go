@@ -1,12 +1,17 @@
 package core
 
 import (
-    "errors"
-    "database/sql/driver"
+	"database/sql/driver"
+	"errors"
 )
 
 type Value struct {
 	raw []byte
+}
+
+//FIXME: need to return the right type of Value
+func (v *Value) Raw() string {
+	return string(v.raw)
 }
 
 type Field struct {
@@ -24,6 +29,7 @@ type QueryResult struct {
 type Result struct {
 	qr    *QueryResult
 	index int //current index
+	error
 }
 
 func NewResult(rowCount, rowsAffected, insertId int64, fields []Field) *Result {
@@ -37,10 +43,10 @@ func NewResult(rowCount, rowsAffected, insertId int64, fields []Field) *Result {
 	}
 }
 
+// Return the len of rows
 func (result *Result) RowsRetrieved() int64 {
 	return int64(len(result.qr.Rows))
 }
-
 
 func (result *Result) Rows() [][]Value {
 	return result.qr.Rows
@@ -51,6 +57,7 @@ func (result *Result) Fields() []Field {
 }
 
 // driver.Result interface
+
 func (result *Result) LastInsertId() (int64, error) {
 	return int64(result.qr.InsertId), nil
 }
@@ -60,6 +67,7 @@ func (result *Result) RowsAffected() (int64, error) {
 }
 
 // driver.Rows interface
+
 func (result *Result) Columns() []string {
 	cols := make([]string, len(result.qr.Fields))
 	for i, f := range result.qr.Fields {
@@ -73,10 +81,9 @@ func (result *Result) Close() error {
 	return nil
 }
 
-
 func (result *Result) Next(dest []driver.Value) error {
 	if len(dest) != len(result.qr.Fields) {
-        return errors.New("result: field length mismatch")
+		return errors.New("result: field length mismatch")
 	}
 	if result.index >= len(result.qr.Rows) {
 		return errors.New("result: index beyond rows")
@@ -84,7 +91,7 @@ func (result *Result) Next(dest []driver.Value) error {
 	defer func() { result.index++ }()
 	for i, v := range result.qr.Rows[result.index] {
 		if v.raw != nil {
-			dest[i] = convert(int(result.qr.Fields[i].Type), string(v.raw))
+			dest[i] = convert(int(result.qr.Fields[i].Type), string(v.raw)) //FIXME
 		}
 	}
 	return nil
