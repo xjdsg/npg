@@ -262,7 +262,7 @@ func (conn *Conn) readBMsg() interface{} {
 		case _BackendKeyData: //K
 			conn.readInt32()
 			conn.readInt32() //backendPid
-			conn.readInt32() //backendSecretKey 
+			conn.readInt32() //backendSecretKey
 
 		case _BindComplete:
 			conn.readInt32()
@@ -305,7 +305,7 @@ func (conn *Conn) readBMsg() interface{} {
 
 		case _ReadyForQuery: //Z
 			conn.readInt32()
-			conn.readByte() //TxStatus 
+			conn.readByte() //TxStatus
 
 		case _RowDescription: //T
 			return conn.getFields()

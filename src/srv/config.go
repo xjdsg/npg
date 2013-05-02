@@ -23,6 +23,7 @@ func LoadConfigFile(file string) *Config {
 
 	fp, err := os.Open(file)
 	defer fp.Close()
+
 	if err != nil {
 		log.Fatal(err)
 	}
