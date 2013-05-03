@@ -2,7 +2,7 @@ package srv
 
 import (
 	"bufio"
-	"fmt"
+	//"fmt"
 	"io"
 	"log"
 	"os"
@@ -51,26 +51,4 @@ func LoadConfigFile(file string) *Config {
 	return cfg
 }
 
-// string format is hostname:port:dbname:username:password
-// hostname is required
-func GetString(str string) (s string) {
-	pieces := strings.Split(str, ":")
-	if pieces[0] != "" {
-		s = fmt.Sprintf("host=%s", pieces[0]) //fix if host is null,
-	}
-	if pieces[1] != "" {
-		s = fmt.Sprintf("%s port=%s", s, pieces[1])
-	}
-	if pieces[2] != "" {
-		s = fmt.Sprintf("%s dbname=%s", s, pieces[2])
-	}
-	if pieces[3] != "" {
-		s = fmt.Sprintf("%s user=%s", s, pieces[3])
-	}
-	if pieces[4] != "" {
-		s = fmt.Sprintf("%s password=%s", s, pieces[4])
-	}
-	//log.Println("conn params: ", s)
-	return
 
-}
