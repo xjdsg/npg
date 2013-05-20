@@ -12,11 +12,13 @@ var MaxFreeConns = 32
 type Pool struct {
 	cnInfo string //connect info string
 	conns  chan *Conn
+	status bool //true:backend ok, false: bad
+	cnNum  int  //Number of connections created
 }
 
 func NewPool(cninfo string) *Pool {
 	//log.Println("Info: NewPool... ", cninfo)
-	pool := &Pool{cnInfo: cninfo}
+	pool := &Pool{cnInfo: cninfo, status: false}
 	pool.conns = make(chan *Conn, MaxFreeConns)
 
 	return pool
@@ -36,9 +38,16 @@ func (p *Pool) CreateConn() (cn *Conn, err error) {
 	cn, err = Connect(p.cnInfo)
 
 	if err != nil {
+		if cn != nil {
+			p.status = true // can connect to server but auth wrong, the server is up 
+		} else {
+			p.status = false // can not dial to 
+		}
 		return nil, fmt.Errorf("Create conn failed: [%s] %v", p.cnInfo, err)
 	}
 
+	p.cnNum++
+	p.status = true
 	log.Println("Info: Create a new conn success ", p.cnInfo)
 	return
 }
@@ -54,12 +63,32 @@ func (p *Pool) GetConn() (cn *Conn, err error) {
 	return
 }
 
-//if chan is full , close conn else put conn to chan
+/* if chan is full , close conn else put conn to chan */
 func (p *Pool) ReleaseConn(cn *Conn) {
 	if len(p.conns) < cap(p.conns) {
 		p.conns <- cn
 	} else {
 		cn.Close()
+		p.cnNum--
 	}
+
+}
+
+/*
+func (p *Pool) CheckBackendStatus() bool{
+
+}
+*/
+
+func (p *Pool) BackendPing() bool {//FIXME
+    cn, err := p.CreateConn()
+    if err != nil {
+		return p.status
+    }
+	rs, err := cn.Exec("SELECT 1")
+	if err != nil {
+		return true
+	}
+    return false
 
 }

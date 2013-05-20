@@ -3,15 +3,15 @@ package core
 import (
 	"fmt"
 	"log"
-    "strings"
+	"strings"
 )
 
 var MaxBackends = 32
 
 //backends driver
 type BDriver struct {
-	pools    []*Pool // for each backend pg 
-	backends []string     //backend   hostname:port:dbname:username:password
+	pools    []*Pool  // for each backend pg 
+	backends []string //backend   hostname:port:dbname:username:password
 }
 
 func NewBDriver(backends []string) *BDriver {
@@ -101,7 +101,7 @@ func (drv *BDriver) ExecParallelQuery(sql string) (*Result, error) {
 
 	//no rows return like update/delete/insert, or select result is empty 
 	if rowCount <= 0 {
-        rs := NewResult(rowCount, rowsAffected, int64(0), results[0].Fields())
+		rs := NewResult(rowCount, rowsAffected, int64(0), results[0].Fields())
 		return rs, nil
 	}
 
@@ -138,7 +138,7 @@ func (drv *BDriver) ExecParallelQuery(sql string) (*Result, error) {
 // Output: "hostname= port= dbname= username= password= " for connecting
 func (drv *BDriver) GetString(str string) string {
 	pieces := strings.Split(str, ":")
-    s := make([]string, 0, 5)
+	s := make([]string, 0, 5)
 	if pieces[0] != "" {
 		s = append(s, fmt.Sprintf("host=%s", pieces[0]))
 	}
@@ -158,3 +158,8 @@ func (drv *BDriver) GetString(str string) string {
 	return strings.Join(s, " ")
 
 }
+/*
+func (drv *BDriver) CheckBackendsStatus() {
+
+}
+*/
