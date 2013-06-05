@@ -32,6 +32,4 @@ func TestExecParse(t *testing.T) {
 	}
 	t.Log(sql)
 
-	t.Error("test")
-
 }

@@ -64,7 +64,9 @@ func DMLHandler(w http.ResponseWriter, r *http.Request) {
 		idx := rand.Intn(partita.num-0) + 0
 		log.Println("Info: random processed at backend ", partita.drv.GetBackends()[idx])
 		rs, err := partita.drv.ExecSingleQuery(sql, idx)
+		log.Println("test")
 		if err != nil {
+			log.Println(err)
 			fmt.Fprint(w, err)
 		}
 		err = writeResponse(rs, w)

@@ -18,6 +18,7 @@ type cnParams struct {
 	Database string
 	User     string
 	Password string
+	SSLmode  string
 }
 
 type Conn struct {
@@ -27,7 +28,7 @@ type Conn struct {
 	writer *bufio.Writer
 }
 
-func (conn *Conn) parseParams(s string) *cnParams {
+func parseParams(s string) *cnParams {
 	if len(s) == 0 {
 		return nil
 	}
@@ -46,7 +47,7 @@ func (conn *Conn) parseParams(s string) *cnParams {
 	for _, p := range ps {
 		kv := strings.Split(p, "=")
 		if len(kv) < 2 {
-			log.Fatal("Error: invalid option ", p)
+			log.Fatal("invalid option ", p)
 		}
 		vs[kv[0]] = kv[1]
 	}
@@ -56,24 +57,37 @@ func (conn *Conn) parseParams(s string) *cnParams {
 	params.User, _ = vs["user"]
 	params.Database, _ = vs["dbname"]
 	params.Password, _ = vs["password"]
+	params.SSLmode, _ = vs["sslmode"]
 	return params
 }
 
 func Connect(s string) (conn *Conn, err error) {
-	conn = &Conn{}
-	params := conn.parseParams(s)
+	params := parseParams(s)
 	cn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", params.Host, params.Port))
 	if err != nil {
-		log.Println("dial error")
+		log.Fatal("dial error")
 		return nil, err
 	}
-	conn.cn = cn
-	conn.params = params
-	conn.reader = bufio.NewReader(cn)
-	conn.writer = bufio.NewWriter(cn)
+
+	conn = &Conn{cn: cn, params: params}
+    conn.reader = bufio.NewReader(cn) 
+    conn.writer = bufio.NewWriter(cn)
+
+	if params.SSLmode != "" {
+		err = conn.writeSSL(params.SSLmode)
+		if err != nil {
+			log.Fatal(err)
+			return nil, err
+		}
+       conn.reader = bufio.NewReader(conn.cn)  //conn.cn have changed !!!!!!!!!
+       conn.writer = bufio.NewWriter(conn.cn)
+
+	}
+
 	conn.writeStartup()
+	//log.Println(string(conn.readByte()))
 	err = conn.readAuth()
-	return
+	return conn, err
 }
 
 func (conn *Conn) Exec(sql string, args ...interface{}) (rs *Result, err error) {

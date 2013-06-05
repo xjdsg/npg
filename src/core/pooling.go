@@ -80,15 +80,15 @@ func (p *Pool) CheckBackendStatus() bool{
 }
 */
 
-func (p *Pool) BackendPing() bool {//FIXME
-    cn, err := p.CreateConn()
-    if err != nil {
+func (p *Pool) BackendPing() bool { //FIXME
+	cn, err := p.CreateConn()
+	if err != nil {
 		return p.status
-    }
-	rs, err := cn.Exec("SELECT 1")
+	}
+	_, err = cn.Exec("SELECT 1")
 	if err != nil {
 		return true
 	}
-    return false
+	return false
 
 }

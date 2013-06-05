@@ -7,6 +7,7 @@ package core
 import (
 	"encoding/binary"
 	"fmt"
+	"crypto/tls"
 	"math"
 	"math/big"
 	"strconv"
@@ -285,7 +286,7 @@ func (conn *Conn) writeStartup() { //
 	conn.writeInt32(msglen)
 
 	// For now we only support protocol version 3.0.
-	conn.writeInt32(3 << 16)
+	conn.writeInt32(196608) //3 << 16)
 
 	conn.writeString0("user")
 	conn.writeString0(conn.params.User)
@@ -310,4 +311,33 @@ func (conn *Conn) writeTerminate() {
 	conn.writeInt32(4)
 
 	conn.flush()
+}
+
+func (conn *Conn) writeSSL(ssl string) error {
+	tlsConf := tls.Config{}
+	switch ssl {
+	case "require":
+		tlsConf.InsecureSkipVerify = true
+	case "verify-full":
+		// fall out
+	case "disable":
+		return nil
+	default:
+		return fmt.Errorf(`unsupported sslmode %q; only "require" (default), "verify-full", and "disable" supported`, ssl)
+	}
+
+	conn.writeInt32(8)
+	conn.writeInt32(80877103)
+
+	conn.flush()
+
+
+	cmd :=conn.readByte()   //return just one byte we get N from localhost
+
+	if cmd != 'S' {
+		return fmt.Errorf("SSL is not enabled on the server ")
+	}
+
+	conn.cn = tls.Client(conn.cn, &tlsConf)
+	return nil
 }

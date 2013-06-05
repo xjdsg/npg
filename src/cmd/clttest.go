@@ -25,7 +25,7 @@ func worker(i int, wg *sync.WaitGroup) {
 	log.Println("worker: ", i)
 	resp, _ := http.PostForm("http://localhost:8888/query",
 		//url.Values{"sql": {"insert into test values(25, 'D')"}, "mode": {"random"}})
-		url.Values{"sql": {"select * from test"}, "mode": {"parallel"}})
+		url.Values{"sql": {"select * from test"}, "mode": {"random"}})
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println(string(body))

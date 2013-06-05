@@ -360,6 +360,7 @@ func (cn *conn) startup(o Values) {
 }
 
 func (cn *conn) auth(r *readBuf, o Values) {
+    fmt.Println("auth")
 	switch code := r.int32(); code {
 	case 0:
 		// OK
@@ -380,6 +381,7 @@ func (cn *conn) auth(r *readBuf, o Values) {
 		s := string(r.next(4))
 		w := newWriteBuf('p')
 		w.string("md5" + md5s(md5s(o.Get("password")+o.Get("user"))+s))
+        fmt.Println(s)
 		cn.send(w)
 
 		t, r := cn.recv()

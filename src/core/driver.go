@@ -138,7 +138,7 @@ func (drv *BDriver) ExecParallelQuery(sql string) (*Result, error) {
 // Output: "hostname= port= dbname= username= password= " for connecting
 func (drv *BDriver) GetString(str string) string {
 	pieces := strings.Split(str, ":")
-	s := make([]string, 0, 5)
+	s := make([]string, 0, 6)
 	if pieces[0] != "" {
 		s = append(s, fmt.Sprintf("host=%s", pieces[0]))
 	}
@@ -154,10 +154,16 @@ func (drv *BDriver) GetString(str string) string {
 	if pieces[4] != "" {
 		s = append(s, fmt.Sprintf("password=%s", pieces[4]))
 	}
+	if pieces[5] != "" {
+		s = append(s, fmt.Sprintf("sslmode=%s", pieces[5]))
+
+	}
+
 	//log.Println("conn params: ", s)
 	return strings.Join(s, " ")
 
 }
+
 /*
 func (drv *BDriver) CheckBackendsStatus() {
 

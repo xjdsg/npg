@@ -5,13 +5,13 @@
 package core
 
 import (
+	"bytes"
 	"container/list"
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	//"log"
-	"bytes"
 	"strconv"
 	"strings"
 )
@@ -67,47 +67,37 @@ func (conn *Conn) readString() string {
 }
 
 func (conn *Conn) readAuth() error { //FIXME
-	conn.readByte() //read cmd
+    conn.readByte() //read cmd
 	// Just eat message length.
 	conn.readInt32()
 
 	authType := conn.readInt32()
+	//fmt.Println(authType)
 	switch authenticationType(authType) {
 	case _AuthenticationOk:
+        return nil
 		// nop
 
 		//		case _AuthenticationKerberosV5 authenticationType:
 
-		//		case _AuthenticationCleartextPassword:
+	case _AuthenticationCleartextPassword:
+		conn.writePasswordMessage(conn.params.Password)
 
-	case _AuthenticationMD5Password:
+	case _AuthenticationMD5Password: //5
 		salt := make([]byte, 4)
-
 		conn.read(salt)
-
-		md5Hasher := md5.New()
-
-		_, err := md5Hasher.Write([]byte(conn.params.Password))
+		h := md5.New()
+		_, err := h.Write([]byte(conn.params.Password + conn.params.User))
 		panicIfErr(err)
+		hstr := hex.EncodeToString(h.Sum(nil))
 
-		_, err = md5Hasher.Write([]byte(conn.params.User))
+        h.Reset()
+		_, err = h.Write([]byte(hstr))
 		panicIfErr(err)
-
-		md5HashHex1 := hex.EncodeToString(md5Hasher.Sum(nil))
-
-		md5Hasher.Reset()
-
-		_, err = md5Hasher.Write([]byte(md5HashHex1))
+		_, err = h.Write(salt)
 		panicIfErr(err)
-
-		_, err = md5Hasher.Write(salt)
-		panicIfErr(err)
-
-		md5HashHex2 := hex.EncodeToString(md5Hasher.Sum(nil))
-
-		password := "md5" + md5HashHex2
-
-		conn.writePasswordMessage(password)
+		hstr = hex.EncodeToString(h.Sum(nil))
+		conn.writePasswordMessage("md5" + hstr)
 
 		//		case _AuthenticationSCMCredential:
 
@@ -119,6 +109,16 @@ func (conn *Conn) readAuth() error { //FIXME
 	default:
 		return fmt.Errorf("unsupported authentication type: %d", authType)
 	}
+
+    cmd := conn.readByte()
+    if cmd != 'R' {
+        return fmt.Errorf("unexpected password response: %q", cmd)
+    }
+    conn.readInt32()
+    authType = conn.readInt32()
+    if authType != 0 {
+        return fmt.Errorf("unexpected authentication response: %d", authType)
+    }
 	return nil
 }
 
@@ -196,7 +196,7 @@ func (conn *Conn) getResult() (rs *Result, err error) {
 			rs.qr.Rows = rows
 			return
 		case 'E':
-			return nil, fmt.Errorf(parseE(conn.readNbyte(n - 4)))
+			return nil, conn.readError()
 		default:
 			conn.readNbyte(n - 4) //eat the msg
 			//fmt.Println("msg:", n, string(conn.readNbyte(n-4))) //4 is the len of n
@@ -226,7 +226,7 @@ func (conn *Conn) getPreparedStmt(st *Stmt) error {
 			            return
 			*/
 		case 'E':
-			return fmt.Errorf(parseE(conn.readNbyte(n - 4)))
+			return conn.readError()
 		default:
 			conn.readNbyte(n - 4) //eat the msg
 			//fmt.Println("msg:", n, string(conn.readNbyte(n-4))) //4 is the len of n
@@ -248,9 +248,63 @@ func parseE(b []byte) string {
 	return string(slices[2][1:])
 }
 
+func (conn *Conn) readError() error {
+	// Just eat message length.
+	//conn.readInt32()
+
+	err := &Error{}
+
+	// Read all fields, just ignore unknown ones.
+	for {
+		fieldType := conn.readByte()
+
+		str := conn.readString()
+
+		switch fieldType {
+		case 'S':
+			err.severity = str
+
+		case 'C':
+			err.code = str
+
+		case 'M':
+			err.message = str
+
+		case 'D':
+			err.detail = str
+
+		case 'H':
+			err.hint = str
+
+		case 'P':
+			err.position = str
+
+		case 'p':
+			err.internalPosition = str
+
+		case 'q':
+			err.internalQuery = str
+
+		case 'W':
+			err.where = str
+
+		case 'F':
+			err.file = str
+
+		case 'L':
+			err.line = str
+
+		case 'R':
+			err.routine = str
+		}
+	}
+	return fmt.Errorf(err.String())
+
+}
+
 /*
 //parse the command info from backend
-func (conn *Conn) readBMsg() interface{} {
+func (conn *Conn) readBMsg(re interface{}) (err error){
 	for {
 		msgCode := backendMessageCode(conn.readByte())
 		log.Println("cmd : ", msgCode)
@@ -282,7 +336,7 @@ func (conn *Conn) readBMsg() interface{} {
 		case _EmptyQueryResponse: //I
 			conn.readInt32()
 
-		case _ErrorResponse:
+		case _ErrorResponse: //E
 			n := conn.readInt32()
 			conn.readNbyte(n)
 			//conn.readErrorOrNoticeResponse(true)
@@ -290,7 +344,7 @@ func (conn *Conn) readBMsg() interface{} {
 		case _NoData:
 			conn.readInt32()
 
-		case _NoticeResponse:
+		case _NoticeResponse://N
 			n := conn.readInt32()
 			conn.readNbyte(n)
 			//conn.readErrorOrNoticeResponse(false)
@@ -315,5 +369,4 @@ func (conn *Conn) readBMsg() interface{} {
 	return nil
 
 }
-
 */
